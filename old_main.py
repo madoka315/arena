@@ -19,6 +19,8 @@ from .. import _pcr_data
 from . import sv
 from . import arena
 
+lmt = FreqLimiter(5)
+
 try:
     thumb_up_a = R.img('priconne/gadget/thumb-up-a.png').open().resize((16, 16), Image.LANCZOS)
     thumb_down_a = R.img('priconne/gadget/thumb-down-a.png').open().resize((16, 16), Image.LANCZOS)
@@ -419,7 +421,9 @@ async def get_pic(address: str):
 
 
 async def _QueryArenaImageAsync(image_url: str, region: int, bot: HoshinoBot, ev: CQEvent):
-    # await bot.send(ev, "recognizing")
+    uid = ev.user_id
+    if not lmt.check(uid):
+        await bot.finish(ev, '您查询得过于频繁，请稍等片刻', at_sender=True)
     image = Image.open(BytesIO(await get_pic(image_url)))
     boxDict, s = await getBox(image)
 
@@ -704,6 +708,9 @@ def remove_buffer(uid: str):
             json.dump(buffer, fp, ensure_ascii=False, indent=4)
 
 async def _QueryArenaTextAsync(text: str, region: int, bot: HoshinoBot, ev: CQEvent):
+    uid = ev.user_id
+    if not lmt.check(uid):
+        await bot.finish(ev, '您查询得过于频繁，请稍等片刻', at_sender=True)
     defen = re.sub(r'[?？，,_]', '', text)
     defen, unknown = chara.roster.parse_team(defen)
     if unknown:
@@ -725,6 +732,7 @@ async def __arena_query(bot, ev: CQEvent, region: int, defen, raw=0, only_use_ca
         await bot.finish(ev, '编队中含未实装角色', at_sender=True)
 
     key = ''.join([str(x) for x in sorted(defen)]) + str(region)
+    lmt.start_cd(ev.user_id)
     try:
         res = await arena.do_query(defen, region, -1 if only_use_cache else 1)
     except arena.PcrdfansLimitError:

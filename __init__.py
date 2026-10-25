@@ -95,11 +95,9 @@ async def QueryArenaMessageContextInterface(bot: HoshinoBot, ev: CQEvent):
     await QueryArenaImageAsync(image_url, req.region, bot, ev)
 
 async def QueryArenaImageAsync(image_url: str, region: RegionEnum, bot: HoshinoBot, ev: CQEvent) -> None:
-    from .old_main import _QueryArenaImageAsync
     await _QueryArenaImageAsync(image_url, Region2Int(region), bot, ev)
 
 async def QueryArenaTextAsync(text: str, region: RegionEnum, bot: HoshinoBot, ev: CQEvent) -> None:
-    from .old_main import _QueryArenaTextAsync
     await _QueryArenaTextAsync(text, Region2Int(region), bot, ev)
     
 def Region2Int(region: RegionEnum) -> int:
@@ -112,3 +110,7 @@ def Region2Int(region: RegionEnum) -> int:
     if region == RegionEnum.Japan:
         return 4
     return -1
+
+# 上游是惰性导入，但 old_main 里注册了定时任务(每日03:21重建识别库)和
+# 「竞技场更新卡池」指令——惰性导入会导致重启后无人查询时它们永不注册，改为启动即导入
+from .old_main import _QueryArenaImageAsync, _QueryArenaTextAsync
