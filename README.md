@@ -6,7 +6,7 @@
 ## 食用方法
 用本repo将hoshino/modules/priconne/arena替换即可。
 
-指令：b/r/tjjc + 防守队伍文字/防守队伍截图 （无须+号）
+指令：怎么拆/bjjc/tjjc/rjjc + 防守队伍文字/防守队伍截图 （无须+号）；也可以只发指令前缀，60秒内单独补发截图
 
 使用例见images文件夹或下方。
 

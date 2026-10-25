@@ -424,6 +424,7 @@ async def _QueryArenaImageAsync(image_url: str, region: int, bot: HoshinoBot, ev
     uid = ev.user_id
     if not lmt.check(uid):
         await bot.finish(ev, '您查询得过于频繁，请稍等片刻', at_sender=True)
+    await bot.send(ev, "正在识别阵容...")
     image = Image.open(BytesIO(await get_pic(image_url)))
     boxDict, s = await getBox(image)
 
@@ -753,7 +754,7 @@ async def __arena_query(bot, ev: CQEvent, region: int, defen, raw=0, only_use_ca
     if not len(res):
         remove_buffer(key)
         if not raw:
-            await bot.finish(ev, f'{defen}\n未查询到解法')
+            await bot.finish(ev, '\n抱歉没有查询到解法\n※没有作业说明随便拆 发挥你的想象力～★\n作业上传请前往pcrdfans_com', at_sender=True)
         else:
             return []
 
@@ -767,10 +768,12 @@ async def __arena_query(bot, ev: CQEvent, region: int, defen, raw=0, only_use_ca
     teams = pic2b64(teams)
     teams = MessageSegment.image(teams)
     sv.logger.info('Arena picture ready!')
-    msg = [defen, str(teams)]
-
-    if region == 1:
-        msg.append('※使用"b怎么拆"或"台怎么拆"可按服过滤')
+    at = str(MessageSegment.at(ev.user_id))
+    msg = [
+        defen,
+        f'已为骑士{at}查询到以下进攻方案：',
+        str(teams),
+    ]
 
     sv.logger.debug('Arena sending result...')
     await bot.send(ev, '\n'.join(msg))
