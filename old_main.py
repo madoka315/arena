@@ -725,7 +725,12 @@ async def __arena_query(bot, ev: CQEvent, region: int, defen, raw=0, only_use_ca
         await bot.finish(ev, '编队中含未实装角色', at_sender=True)
 
     key = ''.join([str(x) for x in sorted(defen)]) + str(region)
-    res = await arena.do_query(defen, region, -1 if only_use_cache else 1)
+    try:
+        res = await arena.do_query(defen, region, -1 if only_use_cache else 1)
+    except arena.PcrdfansLimitError:
+        if raw:
+            return []
+        await bot.finish(ev, 'pcrdfans 查询频率超限啦，请稍等片刻再试～(601)', at_sender=True)
 
     defen = [chara.fromid(x).name for x in defen]
     defen = f"防守方【{' '.join(defen)}】"

@@ -24,6 +24,11 @@ if not _gs_cache_filepath.exists():
 querylock = Lock()
 logger = sv.logger
 
+
+class PcrdfansLimitError(Exception):
+    """pcrdfans 接口按来源IP限频（返回码601）"""
+    pass
+
 curpath = dirname(__file__)
 bufferpath = join(curpath, 'buffer/buffer.json')
 
@@ -129,8 +134,6 @@ async def do_query(id_list, region=1, try_cnt=1):
 
     defen = id_list
     key = ''.join([str(x) for x in sorted(defen)]) + str(region)
-    if try_cnt <= 1:
-        print()
     if try_cnt != -1:
         logger.info(f'查询阵容：{key} try_cnt={try_cnt}')
     else:
@@ -206,10 +209,15 @@ async def do_query(id_list, region=1, try_cnt=1):
                     )
                     res = await resp.json()
                     logger.info("    服务器有返回")
+                    if res["code"] == 601:
+                        logger.info("        pcrdfans 限频(601)")
+                        raise PcrdfansLimitError()
                     if res["code"]:
                         logger.info(f'        服务器报错：返回值{res["code"]}')
                         raise Exception()
                     result = res["data"]["result"]
+                except PcrdfansLimitError:
+                    raise
                 except:
                     if degrade_result:
                         logger.info("    查询失败，使用缓存")
