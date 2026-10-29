@@ -739,7 +739,7 @@ async def __arena_query(bot, ev: CQEvent, region: int, defen, raw=0, only_use_ca
     except arena.PcrdfansLimitError:
         if raw:
             return []
-        await bot.finish(ev, 'pcrdfans 查询频率超限啦，请稍等片刻再试～(601)', at_sender=True)
+        await bot.finish(ev, '作业网暂时不可用（601），本地也没有可用缓存，请稍后再试～', at_sender=True)
 
     defen = [chara.fromid(x).name for x in defen]
     defen = f"防守方【{' '.join(defen)}】"

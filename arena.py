@@ -29,6 +29,16 @@ class PcrdfansLimitError(Exception):
     """pcrdfans 接口按来源IP限频（返回码601）"""
     pass
 
+
+# pcrdfans 返回 601（IP/风控拦截，非签名问题）后的冷却时长（秒）
+# 冷却期内跳过请求，直接用缓存/近似解，避免反复撞风控
+LIMIT_COOLDOWN = 300
+_last_limit_time = 0.0
+
+
+class _Pcrdfans601(Exception):
+    pass
+
 curpath = dirname(__file__)
 bufferpath = join(curpath, 'buffer/buffer.json')
 
@@ -127,6 +137,7 @@ def result2render(result, team_type="normal", id_list=[]):
 
 
 async def do_query(id_list, region=1, try_cnt=1):
+    global _last_limit_time
     if len(id_list) < 4 or len(id_list) > 5:
         return []
     if len(id_list) == 4:
@@ -176,6 +187,16 @@ async def do_query(id_list, region=1, try_cnt=1):
                     logger.info(f'        不存在它服缓存')
         if try_cnt == -1:
             result = degrade_result if degrade_result else []
+        elif time.time() < _last_limit_time + LIMIT_COOLDOWN:
+            # 最近刚被 601 拦过：冷却期内不再请求，直接降级
+            logger.info(f'    pcrdfans 601 冷却中（剩余{int(_last_limit_time + LIMIT_COOLDOWN - time.time())}s），跳过请求')
+            if degrade_result:
+                result = degrade_result
+            else:
+                render = findApproximateTeamResult(id_list)
+                if render:
+                    return render
+                raise PcrdfansLimitError()
         else:
             id_list_query = [x * 100 + 1 for x in id_list]
             header = {
@@ -210,14 +231,23 @@ async def do_query(id_list, region=1, try_cnt=1):
                     res = await resp.json()
                     logger.info("    服务器有返回")
                     if res["code"] == 601:
-                        logger.info("        pcrdfans 限频(601)")
-                        raise PcrdfansLimitError()
+                        _last_limit_time = time.time()
+                        logger.info(f'        pcrdfans 601（IP/风控拦截），进入 {LIMIT_COOLDOWN}s 冷却并降级')
+                        raise _Pcrdfans601()
                     if res["code"]:
                         logger.info(f'        服务器报错：返回值{res["code"]}')
                         raise Exception()
                     result = res["data"]["result"]
-                except PcrdfansLimitError:
-                    raise
+                except _Pcrdfans601:
+                    if degrade_result:
+                        logger.info("    601 降级：使用缓存")
+                        result = degrade_result
+                    else:
+                        logger.info("    601 降级：查询近似解")
+                        render = findApproximateTeamResult(id_list)
+                        if render:
+                            return render
+                        raise PcrdfansLimitError()
                 except:
                     if degrade_result:
                         logger.info("    查询失败，使用缓存")
